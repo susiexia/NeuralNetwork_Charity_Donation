@@ -116,8 +116,47 @@ X_train_scaled = scaler.transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
 # %% [markdown]
-# # Neural Network
+# # Deep_Learning Neural Network
 # Use TensorFlow neural network design a binary classification model that can predict if 
 # a previously funded organization will be successful based on the features in the dataset.
 
+
 # %%
+# determine number of neurons in each layers
+num_input = len(X_train_scaled[0])
+num_first = 28
+num_second = 20
+num_third = 10
+
+# build a Sequential model as a base
+nn_model = tf.keras.models.Sequential()
+
+# build Dense layer for input and first hidden layer
+nn_model.add(tf.keras.layers.Dense(units=num_first, input_dim = num_input,
+                                    activation ='relu'))
+# seconde hidden layer
+nn_model.add(tf.keras.layers.Dense(units = num_second, activation='relu'))
+# seconde hidden layer
+nn_model.add(tf.keras.layers.Dense(units = num_third, activation='relu'))
+# output layer
+nn_model.add(tf.keras.layers.Dense(units = 1, activation='sigmoid'))
+
+nn_model.summary()
+# %%
+# config setting
+nn_model.compile(loss = 'binary_crossentropy', optimizer = 'adam',
+                metrics = ['accuracy'])
+# %%
+# train model with training data
+model_history = nn_model.fit(X_train_scaled, y_train, epochs=130)
+
+history_df = pd.DataFrame(model_history.history, 
+                    index = range(1, len(model_history.history['loss'])+1))
+
+# viz the loss 
+history_df.plot(y = 'accuracy')
+# %%
+# evaluate with test data
+model_loss, model_accuracy = nn_model.evaluate(X_test_scaled, y_test,
+                                                verbose = 2)
+print(f"The model's Loss is {model_loss}, Accuracy is {model_accuracy}")
