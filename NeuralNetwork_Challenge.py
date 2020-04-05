@@ -18,6 +18,7 @@ charity_df.head()
 # %%
 charity_df.isnull().sum()    # no null values in entire dataframe
 charity_df.dtypes
+
 # %%
 # remove inactivity companies (status is 0)
 charity_df = charity_df[charity_df.STATUS == 1]
@@ -28,7 +29,7 @@ companies_name_df.head()
 
 # %%
 # remove some irrelevant variables, neither features nor taget for model
-charity_df = charity_df.drop(columns = ['EIN','NAME'])
+charity_df = charity_df.drop(columns = ['EIN','NAME', 'STATUS','SPECIAL_CONSIDERATIONS'])
 charity_df.head(3)
 # %% [markdown]
 # # Data Preprocess PART 1
@@ -99,8 +100,7 @@ encoded_charity_df.head()
 # %%
 y = encoded_charity_df['IS_SUCCESSFUL'].values
 
-# drop the STATUS column due to all existing data points are acitive
-X = encoded_charity_df.drop(columns = ['IS_SUCCESSFUL', 'STATUS']).values 
+X = encoded_charity_df.drop(columns = ['IS_SUCCESSFUL']).values 
 
 # split into training and testing parts
 X_train, X_test, y_train, y_test = train_test_split(X, y, random_state = 42)
@@ -115,6 +115,19 @@ scaler.fit(X_train)
 X_train_scaled = scaler.transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
+# %% [markdown]
+# # Data Preprocess PART 4
+# Use PCA (principal Components Analysis) to reduce dimensionality
+# %%
+#from sklearn.decomposition import PCA
+
+#pca = PCA(n_components = 3, random_state= 42)
+# train pca model with scaled data
+#pca.fit(X_train_scaled)
+# X_pca_train = pca.transform(X_train_scaled)
+#X_pca_test =pca.transform(X_test_scaled)
+#print(f'The pca ratio is {pca.explained_variance_ratio_}')
+# %%
 
 # %% [markdown]
 # # Deep_Learning Neural Network
@@ -125,9 +138,9 @@ X_test_scaled = scaler.transform(X_test)
 # %%
 # determine number of neurons in each layers
 num_input = len(X_train_scaled[0])
-num_first = 25
-num_second = 15
-num_third = 5
+num_first = 250
+num_second = 125
+num_third = 50
 
 kernel_reg = tf.keras.regularizers.l2(0.01)
 act_reg = tf.keras.regularizers.l1(0.01)
@@ -137,8 +150,8 @@ nn_model = tf.keras.models.Sequential()
 
 # build Dense layer for input and first hidden layer
 nn_model.add(tf.keras.layers.Dense(units=num_first, input_dim = num_input,
-                                    activation ='relu',
-                                    #kernel_regularizer = kernel_reg,activity_regularizer= act_reg))
+                                    activation ='relu'))
+                                    #kernel_regularizer = kernel_reg,activity_regularizer= act_reg
 # seconde hidden layer
 nn_model.add(tf.keras.layers.Dense(units = num_second, activation='relu'))
 # seconde hidden layer
@@ -156,7 +169,7 @@ nn_model.compile(loss = 'binary_crossentropy', optimizer = 'adam',
                 metrics = ['accuracy'])
 # %%
 # train model with training data
-model_history = nn_model.fit(X_train_scaled, y_train, epochs=150)
+model_history = nn_model.fit(X_train_scaled, y_train, epochs=500)
 
 history_df = pd.DataFrame(model_history.history, 
                     index = range(1, len(model_history.history['loss'])+1))
