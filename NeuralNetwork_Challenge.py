@@ -1,15 +1,20 @@
 # %%
 import pandas as pd 
 import matplotlib.pyplot as plt 
+
+from scipy import stats
+import numpy as np 
+
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.model_selection import train_test_split
+
 
 import tensorflow as tf 
 
 
 # %% [markdown]
 # # Data Selection
-# Import and characterize the input data.
+#Import Dataset
 
 # %%
 charity_df = pd.read_csv('./Resource/charity_data.csv')
@@ -31,6 +36,8 @@ companies_name_df.head()
 # remove some irrelevant variables, neither features nor taget for model
 charity_df = charity_df.drop(columns = ['EIN','NAME', 'STATUS','SPECIAL_CONSIDERATIONS'])
 charity_df.head(3)
+
+
 # %% [markdown]
 # # Data Preprocess PART 1
 # Transform categorical variables into numerical values
@@ -64,11 +71,10 @@ CLASS_column_Series
 CLASS_column_Series.plot.density()
 # %%
 # The cutoff point should be around 200 counts, btw C4000 and C1700, bucketing them in 'others' 
-# Combine rare categorical values via bucketing.
 replace_CLASS_list = CLASS_column_Series[CLASS_column_Series < 200].index.tolist()
 
 for class_type in replace_CLASS_list:
-    charity_df['CLASSIFICATION'] = charity_df['CLASSIFICATION'].replace(class_type, 'Others')
+     charity_df['CLASSIFICATION'] = charity_df['CLASSIFICATION'].replace(class_type, 'Others')
 
 charity_df['CLASSIFICATION'].value_counts()
 
@@ -93,14 +99,48 @@ encoded_charity_df  = charity_df.merge(encode_df, left_index = True, right_index
                                 .drop(columns = cat_name_list)
 encoded_charity_df.head()
 
+# %% [markdown]
+# # Data Selection
+# Redece outliers and noisy data points for specific variables
+# %%
+# focus on numerical variable: ASK_AMT 
+encoded_charity_df.ASK_AMT.describe()
 
+# %%
+encoded_charity_df.ASK_AMT.plot.box()
+# %%
+# According to boxplot, IQR medthod for outliers has huge outliers(8205), it's not good for this case
+
+Q1 = encoded_charity_df.ASK_AMT.quantile(0.25)
+Q3 = encoded_charity_df.ASK_AMT.quantile(0.75)
+IQR = Q3 - Q1
+
+boo_ASK = (encoded_charity_df.ASK_AMT < (Q1 - 1.5 * IQR)) |(encoded_charity_df.ASK_AMT > (Q3 + 1.5 * IQR))
+IQR_outliers = encoded_charity_df.ASK_AMT[boo_ASK == True]
+len(IQR_outliers)
+
+# %%
+# perform z-score to filter outliers
+
+ASK_AMT_Zscore = np.abs(stats.zscore(charity_df.ASK_AMT) <= 3)
+
+outliers = ASK_AMT_Zscore[ASK_AMT_Zscore == False]
+
+len(outliers)
+# %%
+# remove 53 outliers from dataframe
+encoded_charity_df = encoded_charity_df[(np.abs(stats.zscore(encoded_charity_df.ASK_AMT)) <= 3)]
+encoded_charity_df.head()
+
+# %%
+encoded_charity_df.describe()
 # %% [markdown]
 # # Data Preprocess PART 2
 # Determine features (X) and target column (y) and split into training, testing data
 # %%
 y = encoded_charity_df['IS_SUCCESSFUL'].values
 
-X = encoded_charity_df.drop(columns = ['IS_SUCCESSFUL']).values 
+X = encoded_charity_df.drop(columns = ['IS_SUCCESSFUL']).values
 
 # split into training and testing parts
 X_train, X_test, y_train, y_test = train_test_split(X, y, random_state = 42)
@@ -116,8 +156,8 @@ X_train_scaled = scaler.transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
 # %% [markdown]
-# # Data Preprocess PART 4
-# Use PCA (principal Components Analysis) to reduce dimensionality
+# # (Removed) Data Preprocess PART 4 PCA:  no improvement for optimazation
+
 # %%
 #from sklearn.decomposition import PCA
 
@@ -127,7 +167,7 @@ X_test_scaled = scaler.transform(X_test)
 # X_pca_train = pca.transform(X_train_scaled)
 #X_pca_test =pca.transform(X_test_scaled)
 #print(f'The pca ratio is {pca.explained_variance_ratio_}')
-# %%
+
 
 # %% [markdown]
 # # Deep_Learning Neural Network
@@ -138,12 +178,12 @@ X_test_scaled = scaler.transform(X_test)
 # %%
 # determine number of neurons in each layers
 num_input = len(X_train_scaled[0])
-num_first = 250
-num_second = 125
-num_third = 50
+num_first = len(X_train_scaled[0])*2
+num_second = 50
+num_third = 20
 
-kernel_reg = tf.keras.regularizers.l2(0.01)
-act_reg = tf.keras.regularizers.l1(0.01)
+#kernel_reg = tf.keras.regularizers.l2(0.01)
+#act_reg = tf.keras.regularizers.l1(0.01)
 
 # build a Sequential model as a base
 nn_model = tf.keras.models.Sequential()
@@ -151,14 +191,13 @@ nn_model = tf.keras.models.Sequential()
 # build Dense layer for input and first hidden layer
 nn_model.add(tf.keras.layers.Dense(units=num_first, input_dim = num_input,
                                     activation ='relu'))
-                                    #kernel_regularizer = kernel_reg,activity_regularizer= act_reg
+                                    #kernel_regularizer = kernel_reg,activity_regularizer= act_reg))
 # seconde hidden layer
 nn_model.add(tf.keras.layers.Dense(units = num_second, activation='relu'))
-# seconde hidden layer
+# THIRD hidden layer
 nn_model.add(tf.keras.layers.Dense(units = num_third, activation='relu'))
 # now add a ReLU layer explicitly:
-
-# nn_model_1.add(tf.keras.layers.LeakyReLU(alpha=0.05))
+#nn_model.add(tf.keras.layers.LeakyReLU(alpha=0.05))
 # output layer
 nn_model.add(tf.keras.layers.Dense(units = 1, activation='sigmoid'))
 
@@ -169,7 +208,7 @@ nn_model.compile(loss = 'binary_crossentropy', optimizer = 'adam',
                 metrics = ['accuracy'])
 # %%
 # train model with training data
-model_history = nn_model.fit(X_train_scaled, y_train, epochs=500)
+model_history = nn_model.fit(X_train_scaled, y_train, epochs=200)
 
 history_df = pd.DataFrame(model_history.history, 
                     index = range(1, len(model_history.history['loss'])+1))
