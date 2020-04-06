@@ -23,20 +23,10 @@ Columns metadata:
 
 - IS_SUCCESSFUL—Was the money used effectively **(Target)**
 
-## Analysis
+## Analysis Report
 
-Model: "sequential"
-_________________________________________________________________
-Layer (type)                 Output Shape              Param #   
-=================================================================
-dense (Dense)                (None, 84)                3612      
-_________________________________________________________________
-dense_1 (Dense)              (None, 50)                4250      
-_________________________________________________________________
-dense_2 (Dense)              (None, 20)                1020      
-_________________________________________________________________
-dense_3 (Dense)              (None, 1)                 21        
-=================================================================
+### The model's structure
+
 Total params: 8,903
 Trainable params: 8,903
 Non-trainable params: 0
@@ -54,7 +44,7 @@ Despite of reducing dimensionality with PCA (Principal Component Analysis), the 
 
 4. I tried to add a LeakyReLU layer to deep-learning model, but it didn't work as I expected. Furthermore, adding some regularizers on nauron's kernel still failed.
 
-## Outcomes
+## Analysis Outcomes
 
 The model's accuracy recording:
 
